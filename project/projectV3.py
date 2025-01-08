@@ -19,7 +19,7 @@ import sys
 
 # Alpaca trading keys and client.
 # Paper trading key only.
-# Capitalize vars that are constants, like API keys and dir paths. 
+# Capitalize vars that are constants, like API keys and dir paths.
 # Load environment variables b/c this is best practice. Never hard code keys into codebase.
 
 load_dotenv()
@@ -37,21 +37,20 @@ HIST_DATA_DIR = os.path.join(BASE_DIR, "historical_data")
 os.makedirs(HIST_DATA_DIR, exist_ok=True)
 
 
-# Classes for indicators
-    # Prerequisite defs:
-        # Simple moving avg (SMA): The SMA Calculates the avg price over a specified period of time.
-        
-        # Exponential moving avg (EMA): Siimilar to the SMA but weights more recent price action more heavily. The EMA is a moving average that places a greater weight and significance on the most recent data points. EMA = Closing price x multiplier + EMA (previous day) x (1-multiplier).
+# Prerequisite defs:
+# Simple moving avg (SMA): The SMA Calculates the avg price over a specified period of time.
 
-        # Avg true range (ATR): The true range indicator is taken as the greatest of the following: current high less the current low; the absolute value of the current high less the previous close; and the absolute value of the current low less the previous close. The ATR is then a moving average, generally using 14 days, of the true ranges.
+# Exponential moving avg (EMA): Siimilar to the SMA but weights more recent price action more heavily. The EMA is a moving average that places a greater weight and significance on the most recent data points. EMA = Closing price x multiplier + EMA (previous day) x (1-multiplier).
 
-        # Bollinger bands (BB): BB is typically made up of a 20 day SMA and 2 std dev lines that create a channel.
-        
-        # Keltner channels (KC): KC is a channel made up of 2 bands typically set to twice the ATR above and below the 20 day EMA.
-        
-        # Squeeze indicator (SQ): SQ is made up of BB and KC. When BB is inside KC, the market typically has low volatility. When BB expands outside of KC the market typically has a rush of volatility. The switch of the bands indicates a squeeze trade signal.
-        
-        # MACD indicator (MACD): MACD is the moving average convergence divergence indicator. The MACD line is calculated by subtracting a 26 period EMA from a 12 period EMA. There is also a signal line (9 period EMA) plotted against the MACD line. The subtraction of the signal from the MACD can create a histogram that shows momentum and entry/exit points. This is called the MACD Wave.
+# Avg true range (ATR): The true range indicator is taken as the greatest of the following: current high less the current low; the absolute value of the current high less the previous close; and the absolute value of the current low less the previous close. The ATR is then a moving average, generally using 14 days, of the true ranges.
+
+# Bollinger bands (BB): BB is typically made up of a 20 day SMA and 2 std dev lines that create a channel.
+
+# Keltner channels (KC): KC is a channel made up of 2 bands typically set to twice the ATR above and below the 20 day EMA.
+
+# Squeeze indicator (SQ): SQ is made up of BB and KC. When BB is inside KC, the market typically has low volatility. When BB expands outside of KC the market typically has a rush of volatility. The switch of the bands indicates a squeeze trade signal.
+
+# MACD indicator (MACD): MACD is the moving average convergence divergence indicator. The MACD line is calculated by subtracting a 26 period EMA from a 12 period EMA. There is also a signal line (9 period EMA) plotted against the MACD line. The subtraction of the signal from the MACD can create a histogram that shows momentum and entry/exit points. This is called the MACD Wave.
 
 # Parent class
 class Indicator:
@@ -173,23 +172,17 @@ class MACD(Indicator):
     def calc(self):
         fast_ema = EMA(self.df, 12)
         slow_ema = EMA(self.df, 26)
-        signal_ema = EMA(self.df, 9)
         fast_ema.calc()
         slow_ema.calc()
-        signal_ema.calc()
-        
-        self.df["MACD"] = self.df["EMA_12"] - self.df["EMA_26"]
-        
-        # Appends a boolean to easily see the cross, but doesn't show momentum.
-        #self.df["MACD Signal Long"] = self.df["MACD"] > self.df["EMA_9"]
 
+        self.df["MACD"] = self.df["EMA_12"] - self.df["EMA_26"]
+        self.df["MACD Signal"] = (self.df["MACD"].ewm(span=9, adjust=False).mean())
         # Appends a float to create a histogram that can show momentum. I think this is what John Carter calls the wave.
-        self.df["MACD Wave"] = self.df["MACD"] - self.df["EMA_9"]
+        self.df["MACD Wave"] = self.df["MACD"] - self.df["MACD Signal"]
 
 
 # Class for matplotlib visualization
 # Plot multiple timeframe charts each with their own indicators.
-
 
 
 def get_data(ticker):
@@ -265,7 +258,6 @@ def main():
         # Plot the data that was requested using the anchor visualization object.
 
         # Output call to action. Buy, sell, or wait.
-
 
 
 if __name__ == "__main__":
