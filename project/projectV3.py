@@ -3,7 +3,9 @@
 # Use Alpaca for stock data. Arguably more robust than yfinance.
 # Use pandas for data handling and I/O. pandas is used heavily for data analysis.
 # Use os to create dir
+import matplotlib
 import matplotlib.pyplot as plt
+import tkinter
 import mplfinance as mpf
 from alpaca.data import StockHistoricalDataClient
 from alpaca.trading.client import TradingClient
@@ -16,6 +18,9 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import time
 import sys
+
+# This uses tKinter backend for visuals. Should be able to use this for scrollable figures as well.
+matplotlib.use("TkAgg")
 
 # Alpaca trading keys and client.
 # Paper trading key only.
@@ -64,7 +69,7 @@ class SMA(Indicator):
     
     # Calculation: sum of all closing prices in n periods, divided by n. 
     def calc(self):
-        sma_column = f"SMA_{self.period}"
+        sma_column = f"SMA {self.period}"
         self.df[sma_column] = self.df["close"].rolling(window=self.period).mean()
 
 class EMA(Indicator):
@@ -75,7 +80,7 @@ class EMA(Indicator):
     # Calculation: Closing price x multiplier + EMA (previous day) x (1-multiplier). 
     # Use pandas ewm method. Must calculate from newest to oldest price action. 
     def calc(self):
-        ema_column = f"EMA_{self.period}"
+        ema_column = f"EMA {self.period}"
         self.df[ema_column] = self.df["close"].ewm(span=self.period, adjust=False).mean()
 
 class ATR(Indicator):
@@ -83,24 +88,31 @@ class ATR(Indicator):
         super().__init__(df)
         self.period = period
 
-    # TR Calc: max[(H-L), abs(H-prev close), abs(L-prev close)] 
+    # TR Calc: max[(H-L), abs(H-prev close), abs(L-prev close)]
     # FYI: This calc is better for historical data.
     def tr_calc(self):
-        self.df["tr"] = self.df[["high", "low", "close"]].apply(
-            lambda row: max(row["high"] - row["low"],
-                            abs(row["high"] - row["close"].shift(1)),
-                            abs(row["low"] - row["close"].shift(1))),
-                            axis=1
-        )
-        self.df[f"ATR_{self.period}"] = self.df["tr"].rolling(window=self.period).mean()
+        # self.df["tr"] = self.df[["high", "low", "close"]].apply(
+        #     lambda row: max(row["high"] - row["low"],
+        #                     abs(row["high"] - row["close"].shift(1)),
+        #                     abs(row["low"] - row["close"].shift(1))),
+        #                     axis=1
+        # )
+
+        h_l_diff = self.df["high"] - self.df["low"]
+        h_prev_close_diff = abs(self.df["high"] - self.df["close"].shift(1))
+        l_prev_close_diff = abs(self.df["low"] - self.df["close"].shift(1))
+
+        self.df["TR"] = pd.concat([h_l_diff, h_prev_close_diff, l_prev_close_diff], axis=1).max(axis=1)
+
+        self.df[f"ATR {self.period}"] = self.df["TR"].rolling(window=self.period).mean()
 
     # Calculation: Calculate the EMA of the TR.
     # FYI: This calc is better for live data, if I use that in the future.
     def calc(self):
-            # Must calc tr first.
-            self.tr_calc()
-            atr_column = f"ATR_{self.period}"
-            self.df[atr_column] = self.df["tr"].ewm(span=self.period, adjust=False).mean()
+        # Must calc tr first.
+        self.tr_calc()
+        atr_column = f"ATR {self.period}"
+        self.df[atr_column] = self.df["TR"].ewm(span=self.period, adjust=False).mean()
 
 class STD_DEV(Indicator):
     def __init__(self, df, period):
@@ -109,7 +121,7 @@ class STD_DEV(Indicator):
 
     # Calculation: run std method on the period of closing prices.
     def calc(self):
-        std_dev_column = f"std_dev_{self.period}"
+        std_dev_column = f"Std Dev {self.period}"
         self.df[std_dev_column] = self.df["close"].rolling(window=self.period).std()
 
 class BB(Indicator):
@@ -124,11 +136,11 @@ class BB(Indicator):
         sma.calc()
         std_dev.calc()
         
-        sma_column = f"SMA_{self.period}"
-        std_dev_column = f"std_dev_{self.period}"
+        sma_column = f"SMA {self.period}"
+        std_dev_column = f"Std Dev {self.period}"
 
-        self.df["upper_bb"] = self.df[sma_column] + (2 * self.df[std_dev_column])
-        self.df["lower_bb"] = self.df[sma_column] - (2 * self.df[std_dev_column])
+        self.df["Upper BB"] = self.df[sma_column] + (2 * self.df[std_dev_column])
+        self.df["Lower BB"] = self.df[sma_column] - (2 * self.df[std_dev_column])
 
 class KC(Indicator):
     def __init__(self, df, period):
@@ -144,11 +156,11 @@ class KC(Indicator):
         
         # For readability I'm creating these variables for use in the calculation below.
         # Alternatively, I could use the f-string in the df calculation itself which would sacrifice readability for two less lines of code.
-        ema_column = f"EMA_{self.period}"
-        atr_column = f"ATR_{self.period}"
+        ema_column = f"EMA {self.period}"
+        atr_column = f"ATR {self.period}"
 
-        self.df["upper_kc"] = self.df[ema_column] + (1.5 * self.df[atr_column])
-        self.df["lower_kc"] = self.df[ema_column] - (1.5 * self.df[atr_column])
+        self.df["Upper KC"] = self.df[ema_column] + (1.5 * self.df[atr_column])
+        self.df["Lower KC"] = self.df[ema_column] - (1.5 * self.df[atr_column])
 
 class Squeeze(Indicator):
     def __init__(self, df):
@@ -162,7 +174,7 @@ class Squeeze(Indicator):
         bb.calc()
         kc.calc()
 
-        self.df["squeeze_fired"] = (self.df["lower_bb"] < self.df["lower_kc"]) & (self.df["upper_bb"] > self.df["upper_kc"])
+        self.df["Squeeze Fired"] = (self.df["Lower BB"] < self.df["Lower KC"]) & (self.df["Upper BB"] > self.df["Upper KC"])
 
 class MACD(Indicator):
     def __init__(self, df):
@@ -175,14 +187,56 @@ class MACD(Indicator):
         fast_ema.calc()
         slow_ema.calc()
 
-        self.df["MACD"] = self.df["EMA_12"] - self.df["EMA_26"]
+        self.df["MACD"] = self.df["EMA 12"] - self.df["EMA 26"]
         self.df["MACD Signal"] = (self.df["MACD"].ewm(span=9, adjust=False).mean())
         # Appends a float to create a histogram that can show momentum. I think this is what John Carter calls the wave.
         self.df["MACD Wave"] = self.df["MACD"] - self.df["MACD Signal"]
 
 
-# Class for matplotlib visualization
-# Plot multiple timeframe charts each with their own indicators.
+# Multi timeframe plotting class
+class Anchor_Plot():
+    def __init__(self, data_dict, ticker):
+        self.data_dict = data_dict
+        self.ticker = ticker
+
+    # Plot 4 timeframes with squeeze, squeeze fired, MACD wave, and buy/sell indicators.
+    def plot(self):
+        # figsize is trial and error to fit on screen well. 4 could also be the length of the dict if that number will change.
+        fig, axes = plt.subplots(4, 1, figsize=(7, 14))
+        fig.suptitle(f"{self.ticker} Anchor Charts")
+
+        for index, (tf_name, df) in enumerate(self.data_dict.items()):
+            ax = axes[index]
+            ax.set_title(f"{tf_name} Timeframe")
+            # Check for empty dataframes
+            if not df.empty:
+                df.index = pd.to_datetime(df.index)
+
+                # Instantiate and calculate squeeze and MACD wave
+                squeeze = Squeeze(df)
+                squeeze.calc()
+                macd = MACD(df)
+                macd.calc()
+
+                # Plot price action
+                mpf.plot(df, ax=ax, type="candle", style="yahoo", show_nontrading=True)
+
+                # Plot squeeze histogram and squeeze fired indicator.
+                squeeze_fired = df["Squeeze Fired"]
+                ax.scatter(df.index[squeeze_fired], df["close"][squeeze_fired], color="lightgreen", label="Squeeze Fired", s=10)
+
+                # Plot MACD wave.
+                macd_wave = df["MACD Wave"]
+                macd_colors = ["teal" if x >= 0 else "purple" for x in macd_wave]
+                ax.bar(df.index, macd_wave, color=macd_colors, label="MACD Wave")
+
+            else:
+                # Return some message about an empty dataframe.
+                ax.text(0.5, 0.5, f"No data for {tf_name}", fontsize=12, ha="center", va="center", transform=ax.transAxes)
+
+        plt.tight_layout()
+        plt.subplots_adjust(top=0.95)
+        plt.show()
 
 
 def get_data(ticker):
@@ -220,7 +274,6 @@ def user_input():
     while True:
         user_ticker = input("What ticker would you like to chart?\n").strip().upper()
         if validate_ticker(user_ticker):
-            #print("Valid ticker. What else you got?")
             break
         elif user_ticker == "EXIT":
             print("Exiting program...\nThis has been Arthur Hough's CS50P technical analysis asset tool. Cheers!\n")
@@ -238,7 +291,7 @@ def validate_ticker(ticker):
             return True
     except Exception:
         return False
-    
+
 
 def welcome():
     print("\nWelcome to Arthur Hough's CS50P technical analysis asset tool.\n")
@@ -248,15 +301,24 @@ def welcome():
     print("Whenever you'd like to exit the program, type EXIT.\n\nLet's get started!\n")
 
 
-def main():
-    welcome()
+def run_strategy():
     while True:
         ticker = user_input()
-        all_data_dict = get_data(ticker)
+        data_dict = get_data(ticker)
+        anchor_plot = Anchor_Plot(data_dict, ticker)
+        anchor_plot.plot()        
+        # run a performance test that returns a win ratio, trade frequency, and avg return per trade.
+            # Avg return per trade will be based on daily open price after squeeze fires on all 4 timeframes. Exit will be when price crosses the BB midpoint.
+
+
+def main():
+    welcome()
+    run_strategy()
+
+
 
 
         # Plot the data that was requested using the anchor visualization object.
-
         # Output call to action. Buy, sell, or wait.
 
 
