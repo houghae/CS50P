@@ -3,3 +3,4 @@ venv/
 project/venv/
 project/.venv/
 .env
+project/historical_data/
