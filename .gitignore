@@ -5,3 +5,4 @@ project/.venv/
 .env
 project/historical_data/
 project/test_practice.py
+project/__pycache__
