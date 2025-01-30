@@ -48,9 +48,9 @@ os.makedirs(HIST_DATA_DIR, exist_ok=True)
 
 # Keltner channels (KC): KC is a channel made up of 2 bands typically set to twice the ATR above and below the 20 day EMA.
 
-# Squeeze indicator (SQ): SQ is made up of BB and KC. When BB is inside KC, the market typically has low volatility. When BB expands outside of KC the market typically has a rush of volatility. The switch of the bands indicates a squeeze trade signal.
+# Squeeze indicator (SQ): SQ is made up of BB and KC. When BB is inside KC, the market typically has low volatility. When BB expands outside of KC the market typically has a rush of volatility. The switch of the bands indicates a squeeze trade signal. The green dot signals the potential start of high volatility, and the histogram signals the direction of volatility.
 
-# MACD indicator (MACD): MACD is the moving average convergence divergence indicator. The MACD line is calculated by subtracting a 26 period EMA from a 12 period EMA. There is also a signal line (9 period EMA) plotted against the MACD line. The subtraction of the signal from the MACD can create a histogram that shows momentum and entry/exit points. This is called the MACD Wave.
+# MACD indicator (MACD): MACD is the moving average convergence divergence indicator. The MACD line is calculated by subtracting a 26 period EMA from a 12 period EMA. There is also a signal line (9 period EMA) plotted against the MACD line. The subtraction of the signal from the MACD can create a histogram that shows momentum and entry/exit points. This is called the MACD Wave. The wave reversal from negative to positive can be useful to time big moves in the asset when being used in conjunction with the squeeze indicator.
 
 
 # Parent class
@@ -431,7 +431,7 @@ def welcome():
     print("\nWelcome to Arthur Hough's CS50P technical analysis asset tool.\n")
     time.sleep(2)
     print(
-        "This tool will prompt you for a ticker symbol. \nIt will then call an API, store ticker data in a CSV file (for future backtesting usage), and present a suite of interactive charts in a web browser as a trading strategy visualization."
+        "This tool will prompt you for a ticker symbol. \nIt will then call an API, \nstore ticker data in a CSV file (for future backtesting usage), \nand present a suite of interactive charts in a web browser as a trading strategy visualization."
     )
     print("Whenever you'd like to exit the program, type EXIT.\n\nLet's get started!\n")
 
