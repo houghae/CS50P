@@ -246,6 +246,10 @@ class Anchor_Plot:
         self.ticker = ticker
 
     def plot(self):
+        # Anchor has to be outside of the loop b/c the column needs to be added to the whole data dict. When it was inside the loop, it was only referencing a local reference instead of the actual data dict. Pay attention to scope.
+        anchor = Anchor(self.data_dict)
+        anchor.calc()
+
         # Create anchor figure
         fig = make_subplots(
             rows=4,
@@ -259,9 +263,12 @@ class Anchor_Plot:
             row_heights=[2, 0.08, 1, 0.7],
         )
 
-        # Loop through each tf and plot 3 rows, 1 column.
+        # Loop through each tf and plot 3 rows, 1 column
         for i, (_, df) in enumerate(self.data_dict.items(), start=1):
-            # df = df.reset_index().set_index("timestamp")
+            if isinstance(df.index, pd.MultiIndex):
+                df = df.reset_index().set_index("timestamp")
+
+            # Convert timestap index to pandas datetime
             df.index = pd.to_datetime(df.index)
 
             # Instantiate and calculate squeeze, MACD wave, and anchor
@@ -269,8 +276,6 @@ class Anchor_Plot:
             squeeze.calc()
             macd = MACD(df)
             macd.calc()
-            anchor = Anchor(self.data_dict)
-            anchor.calc()
 
             # Plot price as candles
             fig.add_trace(
@@ -387,7 +392,7 @@ def get_data(ticker):
                 symbol_or_symbols=[ticker],
                 timeframe=TimeFrame(amount=tf_amount, unit=tf_unit),
                 start=now - timedelta(days=1095),
-                limit=1095,  # Pay attention to this. Too high might trigger an API call rate limit.
+                limit=1095,  # Pay attention to this. Too high might trigger an API call rate limit. 1095 seems reasonable.
             )
             df = hist_data_client.get_stock_bars(request).df
             df.to_csv(csv_file)
@@ -424,9 +429,9 @@ def validate_ticker(ticker):
 
 def welcome():
     print("\nWelcome to Arthur Hough's CS50P technical analysis asset tool.\n")
-    time.sleep(1)
+    time.sleep(2)
     print(
-        "This tool will prompt you for a ticker symbol, \nand then present a backtested trading strategy visualization along with an action recommendation."
+        "This tool will prompt you for a ticker symbol. \nIt will then call an API, store ticker data in a CSV file (for future backtesting usage), and present a suite of interactive charts in a web browser as a trading strategy visualization."
     )
     print("Whenever you'd like to exit the program, type EXIT.\n\nLet's get started!\n")
 
