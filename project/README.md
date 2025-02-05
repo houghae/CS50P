@@ -212,3 +212,4 @@ I’d like to acknowledge the following for their inspiration and resources that
 - [FreeCodeCamp](https://www.freecodecamp.org/) - Countless free resources for all kinds of programming related stuff, like [this one](https://www.freecodecamp.org/news/how-to-write-a-good-readme-file/) I used to construct this readme.
 - [CS50P](https://cs50.harvard.edu/python/2022/) - This class was instrumental to me learning Python. I can't begin to express my graditude for David Malan and team.
 
+[**Back to top**](#multiframe-trader)
